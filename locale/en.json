@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Voice Enter to stop",
+    "description": "Pressing Enter while dictating stops the recording and leaves the transcript in the composer; sending stays with the ordinary Enter."
+  }
+}
