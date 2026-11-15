@@ -1,11 +1,14 @@
 # dsh-voice-enter-send
 
-Press **Enter** while dictating in [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) and the
-recording stops: the transcript appears in the composer and nothing is sent. Sending stays where it belongs — on the
-ordinary Enter you press when the text looks right.
+Two quality-of-life fixes for voice dictation in [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness):
 
-The shipped voice input requires reaching for the Stop button with the mouse. This browser plugin adds the missing
-gesture: one key press ends the capture, the transcript lands in the draft.
+1. **Enter ends the capture.** Press it while dictating and the recording stops; the transcript lands in the
+   composer. Sending stays on the ordinary Enter you press when the text looks right.
+2. **Recording survives switching windows.** Leave the app, come back, and the dictation is still running — what you
+   said while away is not discarded.
+
+The shipped voice input requires reaching for the Stop button with the mouse, and it cancels the capture the moment
+the window loses focus. This browser plugin adds both missing behaviors without touching the voice input itself.
 
 ## Requirements
 
@@ -39,20 +42,25 @@ old code until it reloads.
 | Enter with no dictation | Untouched — the composer sends as usual |
 | Shift / Ctrl / Alt / Cmd + Enter | Untouched |
 | Enter during IME composition | Untouched |
+| Switching windows or hiding the page mid-recording | Recording continues; the transcript is kept |
+| Switching windows with no dictation in progress | Untouched — focus events reach the rest of the UI |
 
 Recognition failures are left to the voice input itself: an empty or failed transcript keeps its retry controls and
 never triggers a send.
 
 ## How it works
 
-The plugin ships no UI. Its browser entry registers one document-level `keydown` listener in the capture phase:
+The plugin ships no UI. Its browser entry registers three document/window listeners in the capture phase:
 
-1. Locate the expanded voice control through its `data-voice-activity` attribute.
-2. In the `recording` phase, swallow the key and click that control's primary button — the same Stop the mouse
-   presses.
-3. In the `transcribing` phase, swallow the key and do nothing, letting the transcript land in the draft.
+1. **Enter.** Locates the expanded voice control through its `data-voice-activity` attribute. In the `recording`
+   phase it swallows the key and clicks that control's primary button — the same Stop the mouse presses. In the
+   `transcribing` phase it swallows the key and does nothing, letting the transcript land in the draft.
+2. **Focus loss.** While the control holds a capture (`requesting` or `recording`), `window.blur` and
+   `visibilitychange` are swallowed before the voice control's own cancelling listeners run, so the recording keeps
+   going.
 
-After the transcription is inserted, the next Enter is an ordinary composer submission handled by DSH.
+The plugin loads at boot, before the composer mounts, which is what puts its listeners ahead of the voice
+control's. After the transcription is inserted, the next Enter is an ordinary composer submission handled by DSH.
 
 Configuration lives in `cordis.patch.yml`: the bundle inserts one host row, `voice-enter-send`, whose package
 supplies only the browser artifact (`dsh.client`, platform `web`, `immediately`). The host side is an empty
@@ -60,11 +68,12 @@ supplies only the browser artifact (`dsh.client`, platform `web`, `immediately`)
 
 ## Limitations
 
-- The gesture reads the internal markup of the voice-input plugin: the `data-voice-activity` attribute and the
-  position of its Stop button. A DSH update may change either and silently disable the gesture; dictation itself
+- **The microphone stays live while the window is unfocused.** This deliberately overrides DSH's protective
+  cancel-on-blur: do not leave a recording running if you are not ready for it to hear what happens on the machine.
+- The gestures read the internal markup of the voice-input plugin: the `data-voice-activity` attribute and the
+  position of its Stop button. A DSH update may change either and silently disable the gestures; dictation itself
   keeps working. If that happens, open an issue with the DSH version.
 - Only the composer's voice control is affected; other recorders and shortcuts are untouched.
-- Nothing is sent automatically by design — that was the point of the change.
 
 ## Development
 
@@ -74,8 +83,9 @@ No dependencies and no build step; `client.js` is the browser artifact as served
 node test/voice-enter-send.test.mjs
 ```
 
-The test simulates the module loader, the voice activity row and key events, and covers: stop on Enter, swallowing
-while transcribing, untouched modified/IME Enter, untouched Enter without dictation, and listener disposal.
+The test simulates the module loader, the plugin context, the voice activity row, key events and the focus events,
+and covers: stop on Enter, swallowing while transcribing, protected capture across blur and a hidden page, focus
+events passing through when idle, untouched modified/IME Enter, and listener disposal.
 
 To iterate on an installed copy, edit `client.js` and reload the DSH page (or restart the app). Removing the package
 from the profile is enough to uninstall; no state is written outside it.
@@ -88,13 +98,16 @@ MIT — see [LICENSE](LICENSE).
 
 ## По-русски
 
-Enter во время голосовой диктовки завершает запись: расшифровка попадает в поле ввода, а сообщение **не**
-отправляется. Отправка остаётся обычному Enter. Enter во время расшифровки проглатывается, чтобы не улетел старый
-черновик; Shift/Ctrl/Alt/Cmd+Enter и Enter без диктовки не затрагиваются.
+1. **Enter завершает диктовку**: запись останавливается, расшифровка попадает в поле ввода, сообщение **не**
+   отправляется. Enter во время расшифровки проглатывается, чтобы не улетел старый черновик.
+2. **Переключение окон не прерывает запись**: можно уйти в другое окно и вернуться — надиктованное не пропадёт.
+   Штатный голосовой ввод DSH, наоборот, отменяет запись при потере фокуса.
 
-Нужен включённый голосовой ввод DSH (`@deepseek-ai/dsh-experimental-voice-input-bundle`) и любой провайдер
-распознавания. После установки перезапустите DSH — браузерный бандл подхватывается при загрузке страницы.
+Shift/Ctrl/Alt/Cmd+Enter и Enter без диктовки не затрагиваются. Нужен включённый голосовой ввод DSH
+(`@deepseek-ai/dsh-experimental-voice-input-bundle`) и любой провайдер распознавания. После установки
+перезапустите DSH — браузерный бандл подхватывается при загрузке страницы.
 
-Плагин ничего не рисует: он слушает Enter и нажимает кнопку «Стоп» голосовой панели. Жест опирается на внутреннюю
-разметку штатного голосового ввода (`data-voice-activity` и последняя кнопка панели) — обновление DSH может её
-изменить, и тогда жест перестанет работать, но сама диктовка продолжит работать.
+Важно: пока идёт запись, **микрофон остаётся включённым и при неактивном окне**. Плагин ничего не рисует: он
+слушает Enter и события фокуса и нажимает кнопку «Стоп» голосовой панели. Жесты опираются на внутреннюю разметку
+штатного голосового ввода (`data-voice-activity` и последняя кнопка панели) — обновление DSH может её изменить,
+и тогда жесты перестанут работать, но сама диктовка продолжит работать.

@@ -1,7 +1,7 @@
 {
   "name": "dsh-voice-enter-send",
-  "version": "1.0.0",
-  "description": "Enter ends voice dictation in DeepSeek Harness: the transcript lands in the composer and sending stays on the ordinary Enter.",
+  "version": "1.1.0",
+  "description": "Voice dictation helpers for DeepSeek Harness: Enter ends the capture, and recording survives switching windows.",
   "type": "module",
   "license": "MIT",
   "icon": "./icon.svg",
