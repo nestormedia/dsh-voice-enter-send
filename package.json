@@ -40,5 +40,13 @@
       "platform": "web",
       "immediately": true
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nestormedia/dsh-voice-enter-send.git"
+  },
+  "homepage": "https://github.com/nestormedia/dsh-voice-enter-send#readme",
+  "bugs": {
+    "url": "https://github.com/nestormedia/dsh-voice-enter-send/issues"
   }
 }

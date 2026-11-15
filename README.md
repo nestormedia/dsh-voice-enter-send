@@ -26,7 +26,7 @@ The package is a DSH bundle. Install it with the agent, with Plugin Manager, or 
 
 | Source | Install target |
 | --- | --- |
-| GitHub | `github:<account>/dsh-voice-enter-send` |
+| GitHub | `github:nestormedia/dsh-voice-enter-send` |
 | Local checkout | absolute path to this directory |
 | npm (if published) | `dsh-voice-enter-send` |
 
